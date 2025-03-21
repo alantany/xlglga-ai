@@ -1,99 +1,95 @@
 import { NextResponse } from 'next/server'
-import { chatWithAI } from '@/lib/openrouter'
-import fs from 'fs/promises'
-import path from 'path'
 
-// 定义对话消息类型
 interface ChatMessage {
-  role: string;
-  content: string;
+  role: string
+  content: string
+}
+
+interface FileContent {
+  filename: string
+  content: string
 }
 
 export async function POST(request: Request) {
   try {
-    // 获取请求的信号
-    const { signal } = request
+    const { scenarioId, conversationHistory, isMultiRound, fileContents } = await request.json()
     
-    const { scenarioId, conversationHistory, isMultiRound } = await request.json()
+    // 构建系统提示词
+    let systemPrompt = `你是一位经验丰富的刑侦专家。我会给你一些询问笔录的内容：\n\n`
     
-    // 读取场景问题文件
-    const scenarioPath = path.join(process.cwd(), 'data', 'scenarios', `scenario${scenarioId}.txt`)
-    console.log('读取场景文件:', scenarioPath)
+    // 无论是否多轮对话，都添加文件内容
+    fileContents.forEach((file: FileContent) => {
+      systemPrompt += `=== ${file.filename} ===\n${file.content}\n\n`
+    })
     
-    let questionContent = ''
-    try {
-      questionContent = await fs.readFile(scenarioPath, 'utf-8')
-      console.log('场景内容长度:', questionContent.length)
-      console.log('场景内容前100个字符:', questionContent.substring(0, 100))
-    } catch (readError) {
-      console.error('读取场景文件错误:', readError)
+    // 构建消息数组
+    const messages: ChatMessage[] = []
+    messages.push({ role: "system", content: systemPrompt })
+    
+    // 添加对话历史
+    if (conversationHistory && conversationHistory.length > 0) {
+      messages.push(...conversationHistory)
+    }
+
+    // 检查环境变量
+    if (!process.env.OPENROUTER_API_KEY || !process.env.OPENROUTER_API_URL || !process.env.OPENROUTER_MODEL) {
+      console.error('缺少必要的环境变量配置')
       return NextResponse.json(
-        { error: '无法读取场景文件' },
+        { error: '系统配置错误' },
         { status: 500 }
       )
     }
     
-    // 构建消息
-    let messages = []
-    
-    // 系统消息始终是第一条
-    messages.push({
-      role: "system" as const,
-      content: "你是一个专业的公安工作AI助手，擅长案件分析、文书处理和法律咨询。请根据用户的具体需求提供专业、准确的帮助。"
-    })
-    
-    if (isMultiRound && conversationHistory && conversationHistory.length > 0) {
-      // 如果是多轮对话，添加场景内容作为上下文，然后添加对话历史
-      messages.push({
-        role: "user" as const,
-        content: "以下是案件的背景信息，请记住这些信息用于后续对话：\n\n" + questionContent
-      })
+    // 调用OpenRouter API
+    try {
+      console.log('正在调用OpenRouter API...')
       
-      messages.push({
-        role: "assistant" as const,
-        content: "我已经了解了案件背景信息，请问有什么需要我帮助分析的问题？"
+      const response = await fetch(`${process.env.OPENROUTER_API_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'HTTP-Referer': 'https://localhost:3000',
+          'X-Title': 'Public Security AI Assistant',
+          'OpenAI-Organization': 'cursor-ai'
+        },
+        body: JSON.stringify({
+          model: process.env.OPENROUTER_MODEL,
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 4000,
+        }),
       })
+
+      console.log('发送给API的消息数组:', messages.map(m => ({
+        role: m.role,
+        contentLength: m.content.length,
+        preview: m.content.substring(0, 100) + '...'
+      })))
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('OpenRouter API 响应错误:', response.status, errorText)
+        throw new Error(`API响应错误: ${response.status} ${errorText}`)
+      }
+
+      const data = await response.json()
       
-      // 添加对话历史
-      messages = [...messages, ...(conversationHistory as ChatMessage[]).map(msg => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content
-      }))]
-      
-      console.log('多轮对话消息数量:', messages.length)
-    } else {
-      // 如果是首次对话，直接使用场景内容作为用户问题
-      messages.push({
-        role: "user" as const,
-        content: questionContent
-      })
+      if (!data.choices?.[0]?.message?.content) {
+        console.error('API响应格式错误:', data)
+        throw new Error('API响应格式错误')
+      }
+
+      return NextResponse.json({ response: data.choices[0].message.content })
+    } catch (apiError: any) {
+      console.error('调用OpenRouter API时出错:', apiError)
+      throw new Error(`调用AI服务出错: ${apiError.message}`)
     }
     
-    console.log('发送到AI的消息:', JSON.stringify(messages).substring(0, 200) + '...')
-    
-    // 检查请求是否已被中止
-    if (signal?.aborted) {
-      console.log('请求已被中止')
-      return NextResponse.json({ response: '请求已被用户中止' }, { status: 499 })
-    }
-    
-    // 调用AI API，传递信号
-    const aiResponse = await chatWithAI(messages, signal)
-    
-    return NextResponse.json({ response: aiResponse })
   } catch (error: any) {
-    console.error('API错误:', error)
-    
-    // 如果是中止错误，返回特定状态码
-    if (error.name === 'AbortError') {
-      return NextResponse.json(
-        { error: '请求已被用户中止' },
-        { status: 499 }
-      )
-    }
-    
+    console.error('处理请求时出错:', error)
     return NextResponse.json(
-      { error: '处理请求时出错' },
+      { error: `处理请求时出错: ${error.message}` },
       { status: 500 }
     )
   }

@@ -66,6 +66,84 @@ deploy.bat
 - 构建项目
 - 提供启动选项
 
+### 环境依赖安装指南
+
+#### Ubuntu/Debian 系统安装 Node.js
+
+如果您在运行部署脚本时遇到 "未找到Node.js" 的错误，请按照以下步骤安装 Node.js：
+
+1. **使用 NodeSource 仓库安装最新版本的 Node.js**（推荐）：
+
+   ```bash
+   # 更新包列表
+   sudo apt update
+   
+   # 安装必要的软件包
+   sudo apt install -y curl
+   
+   # 添加 NodeSource 仓库（Node.js 18.x）
+   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+   
+   # 安装 Node.js 和 npm
+   sudo apt install -y nodejs
+   
+   # 验证安装
+   node -v  # 应显示 v18.x.x
+   npm -v   # 应显示 npm 版本
+   ```
+
+2. **使用 NVM（Node Version Manager）安装**（适合需要管理多个 Node.js 版本的用户）：
+
+   ```bash
+   # 安装 NVM
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+   
+   # 重新加载配置
+   source ~/.bashrc
+   
+   # 安装 Node.js 18
+   nvm install 18
+   
+   # 设置为默认版本
+   nvm use 18
+   
+   # 验证安装
+   node -v
+   npm -v
+   ```
+
+#### CentOS/RHEL 系统安装 Node.js
+
+```bash
+# 添加 NodeSource 仓库
+curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+
+# 安装 Node.js
+sudo yum install -y nodejs
+
+# 验证安装
+node -v
+npm -v
+```
+
+#### Arch Linux 安装 Node.js
+
+```bash
+# 安装 Node.js 和 npm
+sudo pacman -S nodejs npm
+
+# 验证安装
+node -v
+npm -v
+```
+
+安装完成后，请重新运行部署脚本：
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
 ### 方法二：手动部署
 
 #### 前提条件

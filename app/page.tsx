@@ -58,9 +58,12 @@ declare global {
 export default function LargeScreenDisplay() {
   const [currentScenario, setCurrentScenario] = useState(0)
   const [isResponding, setIsResponding] = useState(false)
-  const [response, setResponse] = useState("")
+  const [aiResponse, setAiResponse] = useState("")
   const [hoveredScenario, setHoveredScenario] = useState<number | null>(null)
   const [scenarioContent, setScenarioContent] = useState<string>("")
+  const [fileList, setFileList] = useState<string[]>([])
+  const [hoveredFile, setHoveredFile] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [hoverPosition, setHoverPosition] = useState({ top: 0, left: 0 })
   const [isMounted, setIsMounted] = useState(false)
   const [isTooltipHovered, setIsTooltipHovered] = useState(false)
@@ -134,74 +137,88 @@ export default function LargeScreenDisplay() {
   const scenarios = [
     {
       id: 1,
-      title: "对多名嫌疑人讯问笔录进行内容对比分析",
+      title: "第1阶段：立案前材料分析",
+      description: "对立案前的案件材料进行全面分析，包括受害人笔录等关键信息的研判"
     },
     {
-      id: 2,
-      title: "评估讯问笔录内容的准确性和一致性",
+      id: 2, 
+      title: "第2阶段：刑拘前材料分析",
+      description: "对刑事拘留前的证据材料进行分析，评估是否符合刑事拘留条件"
     },
     {
       id: 3,
-      title: "通过多轮交互深入分析复杂案情",
+      title: "第3阶段：报捕前材料分析", 
+      description: "对逮捕前的案件材料进行法律分析，评估是否达到逮捕条件"
     },
     {
       id: 4,
-      title: "生成案件相关的任务关系图谱",
-    },
-    {
-      id: 5,
-      title: "辅助生成规范的移送起诉意见书",
-    },
-    {
-      id: 6,
-      title: "确保生成的移送起诉意见书符合法律规范",
-    },
+      title: "第4阶段：起诉前材料分析",
+      description: "对起诉前的全部证据材料进行综合研判，评估是否达到起诉标准"
+    }
   ]
-
   // 处理鼠标悬停事件
   const handleScenarioHover = async (index: number | null, event?: React.MouseEvent) => {
-    // 清除之前的超时
+    // 清除之前的定时器
     if (tooltipTimeoutRef.current) {
-      clearTimeout(tooltipTimeoutRef.current);
-      tooltipTimeoutRef.current = null;
+      clearTimeout(tooltipTimeoutRef.current)
     }
     
     // 如果鼠标移出按钮，但移入了提示框，则不隐藏提示
     if (index === null && isTooltipHovered) {
-      return;
+      return
     }
     
     // 如果鼠标移出按钮，设置延迟隐藏提示
     if (index === null) {
       tooltipTimeoutRef.current = setTimeout(() => {
         if (!isTooltipHovered) {
-          setHoveredScenario(null);
-          setScenarioContent("");
+          setHoveredScenario(null)
+          setScenarioContent("")
+          setFileList([])
+          setHoveredFile(null)
         }
-      }, 300); // 300ms 延迟，给用户时间移动到提示框
-      return;
+      }, 300)
+      return
     }
     
-    setHoveredScenario(index);
+    setHoveredScenario(index)
     
     // 如果有事件，记录鼠标位置
     if (event) {
-      const rect = event.currentTarget.getBoundingClientRect();
+      const rect = event.currentTarget.getBoundingClientRect()
       setHoverPosition({
         top: rect.top,
-        left: rect.right + 10 // 在按钮右侧10px处显示
-      });
+        left: rect.right + 10
+      })
     }
     
-    if (index !== null) {
+    // 获取目录文件列表
+    try {
+      const response = await fetch(`/api/scenario-content?id=${index + 1}&type=list`)
+      if (response.ok) {
+        const data = await response.json()
+        setFileList(data.files || [])
+        setScenarioContent("")
+      }
+    } catch (error) {
+      console.error('获取文件列表失败:', error)
+    }
+  }
+
+  const handleFileClick = async (file: string) => {
+    if (selectedFile === file) {
+      setSelectedFile(null)
+      setScenarioContent("")
+    } else {
+      setSelectedFile(file)
       try {
-        const response = await fetch(`/api/scenario-content?id=${index + 1}`);
+        const response = await fetch(`/api/scenario-content?id=${hoveredScenario! + 1}&type=file&file=${encodeURIComponent(file)}`)
         if (response.ok) {
-          const data = await response.json();
-          setScenarioContent(data.content);
+          const data = await response.json()
+          setScenarioContent(data.content)
         }
       } catch (error) {
-        console.error('获取场景内容失败:', error);
+        console.error('获取文件内容失败:', error)
       }
     }
   }
@@ -242,7 +259,7 @@ export default function LargeScreenDisplay() {
     }
   };
 
-  // 发送用户输入
+  // 修改发送用户输入的函数
   const sendUserInput = async () => {
     if (!userInput.trim()) return;
     
@@ -271,7 +288,51 @@ export default function LargeScreenDisplay() {
       // 创建新的 AbortController
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
+
+      // 获取当前场景的所有文件内容
+      const filesResponse = await fetch(`/api/scenario-content?id=${currentScenario + 1}&type=list`)
+      if (!filesResponse.ok) {
+        throw new Error('获取文件列表失败')
+      }
+      const filesData = await filesResponse.json()
+      const files = filesData.files || []
+
+      console.log('当前场景的所有文件:', files)
+
+      // 获取所有文件的内容
+      const fileContents = await Promise.all(
+        files.map(async (file: string) => {
+          try {
+            console.log(`正在获取文件内容: ${file}`)
+            const response = await fetch(
+              `/api/scenario-content?id=${currentScenario + 1}&type=file&file=${encodeURIComponent(file)}`
+            )
+            if (response.ok) {
+              const data = await response.json()
+              console.log(`成功获取文件内容: ${file}`)
+              return {
+                filename: file,
+                content: data.content
+              }
+            }
+            console.error(`获取文件 ${file} 内容失败`)
+            return null
+          } catch (error) {
+            console.error(`处理文件 ${file} 时出错:`, error)
+            return null
+          }
+        })
+      )
+
+      // 过滤掉获取失败的文件
+      const validFileContents = fileContents.filter(content => content !== null)
+      console.log(`总共成功读取了 ${validFileContents.length} 个文件的内容`)
+      console.log('文件列表:', validFileContents.map(f => f.filename))
       
+      if (validFileContents.length === 0) {
+        throw new Error('未能成功读取任何文件内容')
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -280,7 +341,8 @@ export default function LargeScreenDisplay() {
         body: JSON.stringify({
           scenarioId: currentScenario + 1,
           conversationHistory: updatedHistory,
-          isMultiRound: true
+          isMultiRound: true,
+          fileContents: validFileContents
         }),
         signal,
       });
@@ -290,7 +352,7 @@ export default function LargeScreenDisplay() {
       }
       
       const data = await response.json();
-      setResponse(data.response);
+      setAiResponse(data.response);
       
       // 更新对话历史，添加AI回复
       setConversationHistory([
@@ -303,7 +365,7 @@ export default function LargeScreenDisplay() {
         console.log('请求已中止');
       } else {
         console.error('回答生成错误:', error);
-        setResponse("抱歉，生成回答时出现错误。请稍后重试。");
+        setAiResponse("抱歉，生成回答时出现错误。请稍后重试。");
       }
     } finally {
       if (abortControllerRef.current) {
@@ -328,12 +390,56 @@ export default function LargeScreenDisplay() {
     
     try {
       setIsResponding(true)
-      setResponse("")
+      setAiResponse("")
       
       // 创建新的 AbortController
       abortControllerRef.current = new AbortController()
       const signal = abortControllerRef.current.signal
+
+      // 获取当前场景的所有文件内容
+      const filesResponse = await fetch(`/api/scenario-content?id=${currentScenario + 1}&type=list`)
+      if (!filesResponse.ok) {
+        throw new Error('获取文件列表失败')
+      }
+      const filesData = await filesResponse.json()
+      const files = filesData.files || []
+
+      console.log('当前场景的所有文件:', files)
+
+      // 获取所有文件的内容
+      const fileContents = await Promise.all(
+        files.map(async (file: string) => {
+          try {
+            console.log(`正在获取文件内容: ${file}`)
+            const response = await fetch(
+              `/api/scenario-content?id=${currentScenario + 1}&type=file&file=${encodeURIComponent(file)}`
+            )
+            if (response.ok) {
+              const data = await response.json()
+              console.log(`成功获取文件内容: ${file}`)
+              return {
+                filename: file,
+                content: data.content
+              }
+            }
+            console.error(`获取文件 ${file} 内容失败`)
+            return null
+          } catch (error) {
+            console.error(`处理文件 ${file} 时出错:`, error)
+            return null
+          }
+        })
+      )
+
+      // 过滤掉获取失败的文件
+      const validFileContents = fileContents.filter(content => content !== null)
+      console.log(`总共成功读取了 ${validFileContents.length} 个文件的内容`)
+      console.log('文件列表:', validFileContents.map(f => f.filename))
       
+      if (validFileContents.length === 0) {
+        throw new Error('未能成功读取任何文件内容')
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -341,9 +447,10 @@ export default function LargeScreenDisplay() {
         },
         body: JSON.stringify({
           scenarioId: currentScenario + 1,
-          isMultiRound: false
+          isMultiRound: false,
+          fileContents: validFileContents
         }),
-        signal, // 添加信号以支持中止
+        signal,
       })
       
       if (!response.ok) {
@@ -351,7 +458,7 @@ export default function LargeScreenDisplay() {
       }
       
       const data = await response.json()
-      setResponse(data.response)
+      setAiResponse(data.response)
       
       // 将初始问题和回答添加到对话历史
       setConversationHistory([
@@ -364,7 +471,7 @@ export default function LargeScreenDisplay() {
         console.log('请求已中止')
       } else {
         console.error('回答生成错误:', error)
-        setResponse("抱歉，生成回答时出现错误。请稍后重试。")
+        setAiResponse("抱歉，生成回答时出现错误。请稍后重试。")
       }
     } finally {
       if (abortControllerRef.current) {
@@ -375,37 +482,22 @@ export default function LargeScreenDisplay() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white p-8 overflow-hidden">
-      {/* Tech background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full opacity-10">
-          <div className="absolute top-[10%] left-[5%] w-[30%] h-[30%] rounded-full bg-blue-500 blur-[100px]"></div>
-          <div className="absolute bottom-[20%] right-[10%] w-[25%] h-[25%] rounded-full bg-indigo-500 blur-[100px]"></div>
-          <div className="absolute top-[40%] right-[20%] w-[20%] h-[20%] rounded-full bg-cyan-500 blur-[100px]"></div>
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-950 to-blue-950 text-slate-100">
+      <header className="p-6 border-b border-blue-900/30">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-white">公安刑侦全阶段AI辅助分析系统</h1>
         </div>
-        <div className="absolute top-0 left-0 w-full h-full grid grid-cols-12 grid-rows-12 opacity-5">
-          {Array.from({ length: 24 }).map((_, i) => (
-            <div key={i} className="border border-blue-500/20"></div>
-          ))}
-        </div>
-      </div>
-
-      <header className="mb-8 relative z-10">
-        <h1 className="text-7xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 pb-2 tracking-tight">
-          内蒙古锡林郭勒盟公安局
-        </h1>
-        <h1 className="text-7xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 pb-2 tracking-tight">
-          公安办案AI辅助系统场景演示
-        </h1>
-        <div className="w-32 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 mx-auto mt-4"></div>
       </header>
 
-      <div className="flex-1 flex gap-8 max-w-7xl mx-auto w-full relative z-10">
-        {/* 左侧场景列表 */}
-        <div className="w-1/3 flex flex-col gap-4">
-          <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-6 border border-blue-500/20 shadow-lg">
-            <h2 className="text-2xl font-bold mb-4 text-blue-300">选择场景</h2>
-            <div className="flex flex-col gap-3">
+      <main className="flex-1 p-6 overflow-hidden flex">
+        <div className="flex-1 flex gap-8 max-w-7xl mx-auto w-full relative z-10">
+          {/* 左侧场景选择区域 */}
+          <div className="w-1/4 bg-gray-900 p-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">选择刑侦阶段</h2>
+            </div>
+
+            <div className="grid gap-4 mb-6">
               {scenarios.map((scenario, index) => (
                 <div 
                   key={scenario.id}
@@ -413,17 +505,17 @@ export default function LargeScreenDisplay() {
                   onMouseEnter={(e) => handleScenarioHover(index, e)}
                   onMouseLeave={() => handleScenarioHover(null)}
                 >
-                  <button
-                    className={`w-full text-left p-4 rounded-md transition-all duration-300 ${
-                      currentScenario === index
-                        ? "bg-gradient-to-r from-blue-900/80 to-cyan-900/80 border border-blue-400/50 shadow-lg shadow-blue-500/20"
-                        : "bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 hover:border-blue-500/30"
-                    }`}
+                  <button 
+                    className={`text-left w-full p-4 rounded-lg border ${
+                      currentScenario === index 
+                        ? "bg-blue-800 border-blue-600" 
+                        : "bg-gray-800 border-gray-700 hover:bg-gray-700"
+                    } transition-all duration-200 ease-in-out`}
                     onClick={() => setCurrentScenario(index)}
                   >
                     <div className="flex items-center">
                       <span className={`text-xl font-bold mr-2 ${currentScenario === index ? "text-blue-300" : "text-slate-300"}`}>
-                        场景{scenario.id}
+                        第{scenario.id}阶段
                       </span>
                       <span className="text-sm text-slate-400">
                         {scenario.title}
@@ -433,95 +525,115 @@ export default function LargeScreenDisplay() {
                 </div>
               ))}
             </div>
-          </div>
-          
-          <div className="mt-4 flex justify-center">
-            <Button
-              size="lg"
-              onClick={handleResponse}
-              className={`text-xl py-6 px-8 transition-all duration-300 flex items-center gap-3 w-full ${
-                isResponding 
-                  ? "bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500" 
-                  : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500"
-              } border-0 shadow-lg shadow-blue-500/20`}
-            >
-              {isResponding ? (
-                <>
-                  <StopCircle className="w-5 h-5" />
-                  停止回答
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5" />
-                  开始回答
-                </>
-              )}
-            </Button>
-          </div>
-          
-          {/* 多轮对话输入区域 */}
-          {response && (
-            <div className="mt-4 bg-slate-900/60 backdrop-blur-sm rounded-lg p-4 border border-blue-500/20 shadow-lg">
-              <h3 className="text-xl font-bold mb-3 text-blue-300">继续对话</h3>
-              <div className="flex flex-col gap-3">
-                <div className="relative">
-                  <textarea
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    placeholder="输入您的问题或使用语音输入..."
-                    className="w-full p-3 bg-slate-800/60 border border-slate-700 rounded-md text-white resize-none h-24"
-                  />
-                  <div className="absolute right-2 bottom-2 flex gap-2">
-                    <button
-                      onClick={toggleRecording}
-                      className={`p-2 rounded-full ${
-                        isRecording 
-                          ? "bg-red-500 hover:bg-red-600" 
-                          : "bg-blue-500 hover:bg-blue-600"
-                      }`}
-                    >
-                      {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
-                    </button>
-                  </div>
-                </div>
-                <Button
-                  onClick={sendUserInput}
-                  disabled={!userInput.trim() || isResponding}
-                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white py-2 flex items-center justify-center gap-2"
-                >
-                  <Send size={16} />
-                  发送问题
-                </Button>
+
+            <div className="mt-auto">
+              <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+                <h3 className="text-lg font-medium text-blue-300 mb-2">使用提示</h3>
+                <p className="text-gray-400 text-sm">
+                  选择左侧的刑侦阶段，在下方输入框中输入您的问题，AI将基于当前阶段的所有材料为您提供专业分析意见。
+                </p>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* 右侧内容区 */}
+          <div className="flex-1 flex flex-col gap-4">
+            {/* 响应区 */}
+            <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden flex-1 flex flex-col">
+              <div className="p-4 bg-gray-800 border-b border-gray-700">
+                <h2 className="text-xl font-semibold text-white">
+                  {currentScenario !== null 
+                    ? `${scenarios[currentScenario].title} - 分析结果` 
+                    : '选择阶段开始分析'}
+                </h2>
+              </div>
+              <div className="flex-1 p-6 overflow-auto">
+                <ResponseDisplay 
+                  response={aiResponse} 
+                  isResponding={isResponding} 
+                  conversationHistory={conversationHistory}
+                />
+              </div>
+            </div>
+
+            {/* 输入区 */}
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className="w-full bg-gray-800 text-white border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:border-blue-500"
+                  placeholder="输入您的问题..."
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendUserInput();
+                    }
+                  }}
+                  disabled={isResponding}
+                />
+                <button
+                  className={`p-2 rounded-md ${
+                    isRecording ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-700 hover:bg-blue-800'
+                  } transition-colors`}
+                  onClick={toggleRecording}
+                  disabled={isResponding}
+                >
+                  {isRecording ? <Mic className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                </button>
+                <button
+                  className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-md transition"
+                  onClick={sendUserInput}
+                  disabled={isResponding || !userInput.trim()}
+                >
+                  发送问题
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        {/* 右侧 AI 回答 */}
-        <div className="w-2/3">
-          <ResponseDisplay 
-            response={response} 
-            isResponding={isResponding} 
-            conversationHistory={conversationHistory}
-          />
-        </div>
+      </main>
+
+      {/* 动态背景装饰 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500/5 to-purple-500/5"></div>
       </div>
 
-      {/* 使用 Portal 将悬停提示放在页面最顶层 */}
-      {isMounted && (hoveredScenario !== null || isTooltipHovered) && scenarioContent && createPortal(
-        <div 
-          className="fixed bg-slate-800 border border-blue-500/30 rounded-md p-4 shadow-xl text-sm whitespace-pre-wrap max-h-[400px] overflow-auto w-[400px] text-white"
-          style={{ 
-            top: `${hoverPosition.top}px`, 
-            left: `${hoverPosition.left}px`,
-            zIndex: 9999
+      {/* 文件列表弹窗 */}
+      {hoveredScenario !== null && (
+        <div
+          className="fixed bg-gray-800 border border-gray-700 rounded-lg p-4 z-50 w-[400px]"
+          style={{
+            top: hoverPosition.top,
+            left: hoverPosition.left,
           }}
           onMouseEnter={handleTooltipMouseEnter}
           onMouseLeave={handleTooltipMouseLeave}
         >
-          {scenarioContent}
-        </div>,
-        document.body
+          <h3 className="text-lg font-semibold mb-4">
+            {scenarios[hoveredScenario].title}
+          </h3>
+          <div className="space-y-2">
+            {fileList.map((file, index) => (
+              <div key={index} className="cursor-pointer">
+                <div
+                  className={`p-2 rounded hover:bg-gray-700 ${
+                    selectedFile === file ? 'bg-gray-700' : ''
+                  }`}
+                  onClick={() => handleFileClick(file)}
+                >
+                  {file}
+                </div>
+                {selectedFile === file && scenarioContent && (
+                  <div className="mt-2 p-2 bg-gray-900 rounded max-h-[300px] overflow-y-auto">
+                    {scenarioContent}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
