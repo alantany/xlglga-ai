@@ -9,6 +9,8 @@ export async function GET(request: Request) {
     const type = url.searchParams.get('type') // 新增type参数，用于区分是获取目录列表还是文件内容
     const file = url.searchParams.get('file') // 新增file参数，用于获取具体文件内容
     
+    console.log(`请求参数: id=${id}, type=${type}, file=${file || '无'}`)
+    
     if (!id) {
       return NextResponse.json(
         { error: '缺少场景 ID 参数' },
@@ -17,14 +19,16 @@ export async function GET(request: Request) {
     }
 
     // 根据阶段ID获取对应的目录名
-    const stageDirs = {
-      '1': '1、立案前材料',
-      '2': '2、刑拘前材料',
-      '3': '3、报捕前材料',
-      '4': '4、起诉前材料'
-    }
+    const scenarioDirectories: { [key: string]: string } = {
+      'criminal_1': '刑事案件/1、立案前材料',
+      'criminal_2': '刑事案件/2、刑拘前材料',
+      'criminal_3': '刑事案件/3、报捕前材料', 
+      'criminal_4': '刑事案件/4、起诉前材料',
+      'traffic_1': '交通案件/交通事故材料',
+      'civil_1': '民事案件/民事纠纷材料'
+    };
     
-    const stageDir = stageDirs[id as keyof typeof stageDirs]
+    const stageDir = scenarioDirectories[id as keyof typeof scenarioDirectories]
     if (!stageDir) {
       return NextResponse.json(
         { error: '无效的阶段 ID' },
@@ -33,6 +37,7 @@ export async function GET(request: Request) {
     }
 
     const dirPath = path.join(process.cwd(), 'data', 'scenarios', stageDir)
+    console.log(`实际目录路径: ${dirPath}`)
 
     // 获取目录文件列表
     if (type === 'list') {
@@ -54,12 +59,47 @@ export async function GET(request: Request) {
     // 获取具体文件内容
     if (type === 'file' && file) {
       try {
-        const filePath = path.join(dirPath, file)
-        console.log(`正在读取文件: ${filePath}`)
-        const content = await fs.readFile(filePath, 'utf-8')
-        console.log(`成功读取文件: ${file}，内容长度: ${content.length}`)
-        console.log(`文件内容前200个字符: ${content.substring(0, 200)}...`)
-        return NextResponse.json({ content })
+        // 确保文件名正确解码
+        const decodedFile = decodeURIComponent(file)
+        console.log(`原始文件名: ${file}`)
+        console.log(`解码后文件名: ${decodedFile}`)
+        
+        const filePath = path.join(dirPath, decodedFile)
+        console.log(`完整文件路径: ${filePath}`)
+        
+        // 检查文件是否存在
+        try {
+          await fs.access(filePath)
+          console.log(`文件存在，准备读取内容`)
+        } catch (error) {
+          console.error(`文件不存在: ${filePath}，错误:`, error)
+          return NextResponse.json(
+            { error: '文件不存在' },
+            { status: 404 }
+          )
+        }
+
+        // 读取文件内容
+        try {
+          const content = await fs.readFile(filePath, 'utf-8')
+          console.log(`成功读取文件: ${decodedFile}，内容长度: ${content.length}`)
+          
+          if (!content || content.trim().length === 0) {
+            console.error(`文件内容为空: ${decodedFile}`)
+            return NextResponse.json(
+              { error: '文件内容为空' },
+              { status: 404 }
+            )
+          }
+
+          return NextResponse.json({ content })
+        } catch (readError: any) {
+          console.error(`读取文件内容错误:`, readError)
+          return NextResponse.json(
+            { error: `读取文件内容失败: ${readError.message}` },
+            { status: 500 }
+          )
+        }
       } catch (error) {
         console.error('读取文件错误:', error)
         return NextResponse.json(

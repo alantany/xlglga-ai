@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getPromptByScenarioId } from '@/prompts/system_prompts'
 
 interface ChatMessage {
   role: string
@@ -14,13 +15,8 @@ export async function POST(request: Request) {
   try {
     const { scenarioId, conversationHistory, isMultiRound, fileContents } = await request.json()
     
-    // 构建系统提示词
-    let systemPrompt = `你是一位经验丰富的刑侦专家。我会给你一些询问笔录的内容：\n\n`
-    
-    // 无论是否多轮对话，都添加文件内容
-    fileContents.forEach((file: FileContent) => {
-      systemPrompt += `=== ${file.filename} ===\n${file.content}\n\n`
-    })
+    // 从提示词文件中获取系统提示词
+    const systemPrompt = getPromptByScenarioId(scenarioId, fileContents)
     
     // 构建消息数组
     const messages: ChatMessage[] = []
