@@ -235,7 +235,7 @@ export default function PromptsAdmin() {
             交通案件
           </TabsTrigger>
           <TabsTrigger value="civil" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-            民事案件
+            治安案件
           </TabsTrigger>
           <TabsTrigger value="settings" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
             模型设置

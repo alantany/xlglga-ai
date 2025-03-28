@@ -222,8 +222,8 @@ export default function LargeScreenDisplay() {
     },
     {
       id: 3,
-      title: "民事案件",
-      description: "民事纠纷案件材料分析",
+      title: "治安案件",
+      description: "治安案件材料分析",
       subScenarios: [
         {
           id: "civil_1",
@@ -745,7 +745,7 @@ export default function LargeScreenDisplay() {
                     <div className="w-1 h-6 bg-blue-500 mr-2 rounded-full"></div>
                     {index === 0 ? 
                       <span className="text-xl">刑事案件</span> : 
-                      <span className="text-xl">{index === 1 ? "交通案件" : "民事案件"}</span>
+                      <span className="text-xl">{index === 1 ? "交通案件" : "治安案件"}</span>
                     }
                   </div>
                   
