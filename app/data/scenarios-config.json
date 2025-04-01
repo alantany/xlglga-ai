@@ -1,0 +1,120 @@
+{
+  "scenarioCategories": [
+    {
+      "id": 1,
+      "title": "刑事案件",
+      "description": "刑事案件材料分析与研判",
+      "baseDirectory": "刑事案件",
+      "subScenarios": [
+        {
+          "id": "criminal_1",
+          "title": "立案前阶段",
+          "description": "分析案件立案前的相关材料",
+          "directory": "1、立案前材料"
+        },
+        {
+          "id": "criminal_2",
+          "title": "刑拘前阶段",
+          "description": "分析案件刑事拘留前的相关材料",
+          "directory": "2、刑拘前材料"
+        },
+        {
+          "id": "criminal_3",
+          "title": "报捕前阶段",
+          "description": "分析案件报请逮捕前的相关材料",
+          "directory": "3、报捕前材料"
+        },
+        {
+          "id": "criminal_4",
+          "title": "起诉前阶段",
+          "description": "分析案件移送起诉前的相关材料",
+          "directory": "4、起诉前材料"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "交通案件",
+      "description": "交通事故案件材料分析",
+      "baseDirectory": "交通案件",
+      "subScenarios": [
+        {
+          "id": "traffic_1",
+          "title": "交通事故材料",
+          "description": "分析交通事故现场勘验笔录、询问笔录等材料，研判事故责任",
+          "directory": "交通事故材料"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "治安案件",
+      "description": "治安案件材料分析",
+      "baseDirectory": "民事案件",
+      "subScenarios": [
+        {
+          "id": "civil_1",
+          "title": "故意伤害案件",
+          "description": "分析故意伤害案件相关材料",
+          "directory": "民事纠纷材料"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "福尔摩斯",
+      "description": "犯罪现场细节分析与作案人特征推断",
+      "baseDirectory": "福尔摩斯",
+      "subScenarios": [
+        {
+          "id": "sherlock_1",
+          "title": "现场勘验分析",
+          "description": "分析犯罪现场的细节，推断作案人特征和行为模式",
+          "directory": "现场勘验分析"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "关系图谱",
+      "description": "复杂案件人物关系分析",
+      "baseDirectory": "关系图谱",
+      "subScenarios": [
+        {
+          "id": "relationship_1",
+          "title": "人物关系分析",
+          "description": "解析案件中多人之间的复杂关系，构建关系网络",
+          "directory": "人物关系分析"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "引导式判例",
+      "description": "通过多次交互，以引导方式辅助案件分析",
+      "baseDirectory": "引导式",
+      "subScenarios": [
+        {
+          "id": "xxxxx_1",
+          "title": "引导式判例",
+          "description": "通过多次交互，以引导方式辅助案件分析",
+          "directory": "引导式判例"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "历史判例分析",
+      "description": "历史判例分析",
+      "baseDirectory": "历史判例分析",
+      "subScenarios": [
+        {
+          "id": "xxxxxx_1",
+          "title": "历史判例分析",
+          "description": "历史判例分析",
+          "directory": "历史判例分析"
+        }
+      ]
+    }
+  ]
+}

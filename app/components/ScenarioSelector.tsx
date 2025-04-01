@@ -41,10 +41,7 @@ export default function ScenarioSelector({
             {/* 添加分类标题 */}
             <div className="font-bold text-blue-300 uppercase tracking-wider pl-1 mb-3 py-1 flex items-center">
               <div className="w-1 h-6 bg-blue-500 mr-2 rounded-full"></div>
-              {index === 0 ? 
-                <span className="text-xl">刑事案件</span> : 
-                <span className="text-xl">{index === 1 ? "交通案件" : "治安案件"}</span>
-              }
+              <span className="text-xl">{scenario.title}</span>
             </div>
             
             {/* 主场景按钮 */}

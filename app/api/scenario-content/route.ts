@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import fs from 'fs/promises'
 import path from 'path'
+import scenariosConfig from '@/app/data/scenarios-config.json'
 
 export async function GET(request: Request) {
   try {
@@ -18,17 +19,18 @@ export async function GET(request: Request) {
       )
     }
 
-    // 根据阶段ID获取对应的目录名
-    const scenarioDirectories: { [key: string]: string } = {
-      'criminal_1': '刑事案件/1、立案前材料',
-      'criminal_2': '刑事案件/2、刑拘前材料',
-      'criminal_3': '刑事案件/3、报捕前材料', 
-      'criminal_4': '刑事案件/4、起诉前材料',
-      'traffic_1': '交通案件/交通事故材料',
-      'civil_1': '民事案件/民事纠纷材料'
-    };
+    // 从配置文件中查找对应的场景目录
+    let stageDir = null;
+    for (const category of scenariosConfig.scenarioCategories) {
+      for (const subScenario of category.subScenarios) {
+        if (subScenario.id === id) {
+          stageDir = `${category.baseDirectory}/${subScenario.directory}`;
+          break;
+        }
+      }
+      if (stageDir) break;
+    }
     
-    const stageDir = scenarioDirectories[id as keyof typeof scenarioDirectories]
     if (!stageDir) {
       return NextResponse.json(
         { error: '无效的阶段 ID' },

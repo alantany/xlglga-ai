@@ -9,6 +9,7 @@ import ResponseDisplay from "@/app/components/ResponseDisplay"
 import { scenarios } from "@/app/data/scenarios"
 import { createSpeechRecognition, SpeechRecognitionEvent, SpeechRecognition } from "@/app/utils/speechRecognition"
 import { getFileList, getFileContent, sendChatRequest } from "@/app/utils/apiService"
+import Link from "next/link"
 
 export default function LargeScreenDisplay() {
   const [currentScenario, setCurrentScenario] = useState<number | null>(0)
@@ -351,6 +352,11 @@ export default function LargeScreenDisplay() {
       {/* 动态背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500/5 to-purple-500/5"></div>
+      </div>
+
+      {/* 管理员链接 */}
+      <div className="fixed bottom-2 right-2 text-xs text-gray-500">
+        <Link href="/admin" className="hover:text-blue-500 transition-colors">管理员</Link>
       </div>
     </div>
   )
