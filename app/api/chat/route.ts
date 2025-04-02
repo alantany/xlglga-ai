@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const { scenarioId, conversationHistory, isMultiRound, fileContents } = await request.json()
     
     // 从提示词文件中获取系统提示词
-    const systemPrompt = getPromptByScenarioId(scenarioId, fileContents)
+    const systemPrompt = await getPromptByScenarioId(scenarioId, fileContents)
     
     // 构建消息数组
     const messages: ChatMessage[] = []

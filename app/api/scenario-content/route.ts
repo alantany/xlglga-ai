@@ -3,6 +3,16 @@ import fs from 'fs/promises'
 import path from 'path'
 import scenariosConfig from '@/app/data/scenarios-config.json'
 
+// 清理文本中的特殊字符，移除 #、* 等符号
+function cleanText(text: string): string {
+  return text
+    .replace(/#{1,6}\s+/g, '') // 移除 markdown 样式的标题 # 符号
+    .replace(/\*\*([^*]+)\*\*/g, '$1')  // 移除 ** 符号但保留内容
+    .replace(/\*([^*]+)\*/g, '$1')      // 移除单个 * 符号但保留内容
+    .replace(/#+/g, '')        // 移除剩余的 # 符号
+    .replace(/---+/g, '')      // 移除分隔符 ---
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
@@ -94,7 +104,10 @@ export async function GET(request: Request) {
             )
           }
 
-          return NextResponse.json({ content })
+          // 清理文本内容中的特殊字符
+          const cleanedContent = cleanText(content)
+          
+          return NextResponse.json({ content: cleanedContent })
         } catch (readError: any) {
           console.error(`读取文件内容错误:`, readError)
           return NextResponse.json(
@@ -115,11 +128,11 @@ export async function GET(request: Request) {
       { error: '无效的请求类型' },
       { status: 400 }
     )
-  } catch (error) {
-    console.error('API错误:', error)
+  } catch (error: any) {
+    console.error('处理请求时出错:', error);
     return NextResponse.json(
-      { error: '处理请求时出错' },
+      { error: `处理请求时出错: ${error.message}` },
       { status: 500 }
-    )
+    );
   }
 } 

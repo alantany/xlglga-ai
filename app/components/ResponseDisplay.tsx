@@ -16,9 +16,23 @@ function cleanupExcessiveWhitespace(text: string): string {
   return cleanedText.replace(/^\s+/, '');
 }
 
+// 清理Markdown格式的函数
+function cleanMarkdown(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/#{1,6}\s+/g, '') // 移除 markdown 样式的标题 # 符号
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // 移除粗体 ** 符号但保留内容
+    .replace(/\*([^*]+)\*/g, '$1')     // 移除斜体 * 符号但保留内容
+    .replace(/#+/g, '')        // 移除剩余的 # 符号
+    .replace(/---+/g, '');     // 移除分隔符 ---
+}
+
 // 格式化文本，突出显示段落标题
 function formatResponseText(text: string): React.ReactNode {
   if (!text) return null;
+  
+  // 首先清理Markdown符号
+  const cleanedText = cleanMarkdown(text);
   
   // 使用正则表达式识别独立成行的段落标题
   // 常见的标题模式包括：事故原因及过程分析、违法行为认定、责任划分依据、案情要点等
@@ -28,7 +42,7 @@ function formatResponseText(text: string): React.ReactNode {
   const heuristicTitlePattern = /^([\s]*)(.{2,15})(:|：)?$/;
   
   // 将文本按行分割
-  const lines = text.split('\n');
+  const lines = cleanedText.split('\n');
   
   // 检测一行是否可能是标题
   const isTitleLine = (line: string, index: number): boolean => {
@@ -102,8 +116,8 @@ export default function ResponseDisplay({ response, isResponding, conversationHi
   const [isTyping, setIsTyping] = useState(false)
   const responseRef = useRef<HTMLDivElement>(null)
   
-  // 处理响应内容，清理多余空行但保留段落分隔
-  const processedResponse = response ? cleanupExcessiveWhitespace(response) : "";
+  // 处理响应内容，先清理Markdown格式，然后清理多余空行但保留段落分隔
+  const processedResponse = response ? cleanupExcessiveWhitespace(cleanMarkdown(response)) : "";
   
   // 打字机效果
   useEffect(() => {
@@ -188,8 +202,11 @@ export default function ResponseDisplay({ response, isResponding, conversationHi
                 {/* 使用格式化组件来渲染响应内容 */}
                 <div className="text-lg leading-relaxed">
                   {message.role === 'assistant' && index === conversationHistory.length - 1 && isTyping ? (
-                    // 打字机效果时直接使用pre-wrap
-                    <div className="whitespace-pre-wrap">{displayedResponse}</div>
+                    // 打字机效果时直接使用pre-wrap，并让光标紧跟文字
+                    <div className="whitespace-pre-wrap">
+                      {displayedResponse}
+                      <span className="inline-block w-2 h-5 align-middle bg-emerald-400 animate-pulse"></span>
+                    </div>
                   ) : (
                     // 完整显示时使用格式化函数
                     message.role === 'assistant' ? (
@@ -198,9 +215,6 @@ export default function ResponseDisplay({ response, isResponding, conversationHi
                       // 用户消息仍然使用预格式化文本
                       <div className="whitespace-pre-wrap">{message.content}</div>
                     )
-                  )}
-                  {message.role === 'assistant' && index === conversationHistory.length - 1 && isTyping && (
-                    <span className="inline-block w-2 h-5 ml-1 bg-emerald-400 animate-pulse"></span>
                   )}
                 </div>
               </div>

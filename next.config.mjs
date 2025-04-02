@@ -16,12 +16,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  skipMiddlewareUrlNormalize: true,
+  skipTrailingSlashRedirect: true,
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
     serverActions: {
-      allowedOrigins: ["localhost:3000", "localhost:3001", "localhost:3002"]
+      allowedOrigins: ["localhost:3000", "localhost:3001", "localhost:3002", "localhost:3003"]
     },
   },
   webpack: (config) => {
@@ -29,7 +31,20 @@ const nextConfig = {
       ...config.resolve.fallback,
       fs: false,
       path: false,
+      os: false,
+      crypto: false,
+      stream: false,
+      http: false,
+      https: false,
+      zlib: false,
     };
+    
+    // 确保正确处理客户端代码中的 Node.js 模块导入
+    config.module = {
+      ...config.module,
+      exprContextCritical: false,
+    };
+    
     return config;
   },
 }

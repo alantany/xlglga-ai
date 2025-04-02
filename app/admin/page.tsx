@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Toaster, toast } from 'react-hot-toast'
 import scenariosConfig from '../data/scenarios-config.json'
-import fs from 'fs'
-import path from 'path'
 
 // 定义类型
 interface SubScenario {
