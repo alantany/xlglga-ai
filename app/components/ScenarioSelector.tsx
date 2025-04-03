@@ -11,6 +11,7 @@ interface ScenarioSelectorProps {
   setIsFileListVisible: (visible: boolean) => void;
   handleSubScenarioClick: (subScenarioId: string) => void;
   handleSubScenarioHover: (show: boolean, event?: React.MouseEvent) => void;
+  isCollapsed?: boolean;
 }
 
 export default function ScenarioSelector({
@@ -22,13 +23,48 @@ export default function ScenarioSelector({
   setFileList,
   setIsFileListVisible,
   handleSubScenarioClick,
-  handleSubScenarioHover
+  handleSubScenarioHover,
+  isCollapsed = false
 }: ScenarioSelectorProps) {
   const subScenarioRef = useRef<HTMLDivElement>(null);
 
+  // 折叠时显示的简化视图
+  if (isCollapsed) {
+    return (
+      <div className="w-0 overflow-hidden flex-shrink-0 opacity-0 transition-all duration-300 ease-in-out">
+        {/* 保留DOM结构但不显示，这样可以保持平滑过渡 */}
+        <div className="invisible">
+          <div className="grid gap-4">
+            {scenarios.map((scenario, index) => (
+              <div key={scenario.id} className="space-y-2">
+                <div className="font-bold text-blue-300 uppercase tracking-wider pl-1 mb-3 py-1">
+                  <span className="text-xl">{scenario.title}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 正常显示的完整视图
   return (
-    <div id="left-menu" className="w-1/5 bg-gray-900 p-4 h-full flex flex-col">
-      <div className="grid gap-4">
+    <div 
+      id="left-menu" 
+      className="w-1/5 bg-gray-900 p-4 h-full flex flex-col transition-all duration-300 ease-in-out overflow-auto border-r border-gray-800 rounded-lg shadow-lg"
+      style={{ boxShadow: '0 0 15px rgba(0, 0, 0, 0.2)' }}
+    >
+      <div className="grid gap-4 relative">
+        {/* 头部标题 */}
+        <div className="sticky top-0 bg-gray-900 pb-2 pt-1 z-10">
+          <h2 className="text-emerald-400 text-xl font-bold flex items-center">
+            <span className="mr-2">📁</span>
+            案件场景选择
+          </h2>
+          <div className="h-px bg-gradient-to-r from-transparent via-blue-500 to-transparent mt-2" />
+        </div>
+        
         {scenarios.map((scenario, index) => (
           <div key={scenario.id} className="space-y-2">
             {/* 添加分隔线 */}
@@ -81,21 +117,29 @@ export default function ScenarioSelector({
             {/* 子场景列表 - 当前选中的主场景才显示 */}
             {currentScenario === index && (
               <div className="ml-2 space-y-1 mt-1">
-                {scenario.subScenarios.map((subScenario) => (
-                  <div 
-                    key={subScenario.id}
-                    ref={subScenarioRef}
-                    className={`p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition-colors ${
-                      selectedSubScenario === subScenario.id ? 'bg-gray-700 border border-blue-500' : ''
-                    }`}
-                    onClick={() => handleSubScenarioClick(subScenario.id)}
-                    onMouseEnter={(e) => selectedSubScenario === subScenario.id && handleSubScenarioHover(true, e)}
-                    onMouseLeave={() => handleSubScenarioHover(false)}
-                  >
-                    <h4 className="font-medium text-blue-300 mb-0.5 text-sm">{subScenario.title}</h4>
-                    <p className="text-xs text-gray-400">{subScenario.description}</p>
-                  </div>
-                ))}
+                <div 
+                  ref={index === 0 ? subScenarioRef : null} 
+                  className="grid gap-2 pl-2"
+                >
+                  {scenario.subScenarios.map((subScenario) => (
+                    <div
+                      key={subScenario.id}
+                      className={`
+                        p-3 rounded-lg cursor-pointer transition-all duration-200
+                        ${selectedSubScenario === subScenario.id 
+                          ? 'bg-gradient-to-r from-blue-900 to-blue-800 shadow-lg transform scale-105 border-l-4 border-blue-400' 
+                          : 'hover:bg-gray-800 border-l-2 border-transparent'}
+                      `}
+                      onClick={() => handleSubScenarioClick(subScenario.id)}
+                    >
+                      <div className="flex items-center">
+                        <div className={`w-2 h-2 rounded-full mr-2 ${selectedSubScenario === subScenario.id ? 'bg-blue-400' : 'bg-gray-600'}`}></div>
+                        <div className="font-medium text-gray-100">{subScenario.title}</div>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-400 pl-4">{subScenario.description}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

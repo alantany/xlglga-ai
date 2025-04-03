@@ -1,10 +1,18 @@
 import { useEffect, useState, useRef } from "react"
 import { Bot, User, Loader2 } from "lucide-react"
+import dynamic from "next/dynamic"
+
+// 使用dynamic导入RelationshipGraph组件，避免SSR问题
+const RelationshipGraph = dynamic(() => import("./RelationshipGraph"), {
+  ssr: false,
+  loading: () => <div className="animate-pulse h-96 w-full bg-slate-800/20 rounded-lg"></div>
+})
 
 interface ResponseDisplayProps {
   response: string
   isResponding: boolean
   conversationHistory: {role: string, content: string}[]
+  scenarioId?: string // 添加场景ID属性
 }
 
 // 清理多余空行的函数（客户端版本）
@@ -110,10 +118,29 @@ const ThinkingAnimation = () => (
   </div>
 )
 
-export default function ResponseDisplay({ response, isResponding, conversationHistory }: ResponseDisplayProps) {
+// 添加独立的关系图谱容器组件
+const GraphContainer = ({ scenarioId }: { scenarioId?: string }) => {
+  if (!scenarioId?.startsWith("relationship_")) return null;
+  
+  return (
+    <div className="mt-8 w-full relative z-10">
+      <div className="flex items-center mb-3 border-l-4 border-emerald-500 pl-3">
+        <h3 className="text-xl font-bold text-emerald-400">人物关系图谱分析</h3>
+        <div className="flex items-center ml-3 text-xs text-gray-400">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1"></span>
+          实时交互可视化
+        </div>
+      </div>
+      <RelationshipGraph />
+    </div>
+  );
+};
+
+export default function ResponseDisplay({ response, isResponding, conversationHistory, scenarioId }: ResponseDisplayProps) {
   const [displayedResponse, setDisplayedResponse] = useState("")
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isTyping, setIsTyping] = useState(false)
+  const [showGraph, setShowGraph] = useState(false)  // 添加状态控制是否显示图谱
   const responseRef = useRef<HTMLDivElement>(null)
   
   // 处理响应内容，先清理Markdown格式，然后清理多余空行但保留段落分隔
@@ -210,7 +237,48 @@ export default function ResponseDisplay({ response, isResponding, conversationHi
                   ) : (
                     // 完整显示时使用格式化函数
                     message.role === 'assistant' ? (
-                      formatResponseText(message.content)
+                      <>
+                        {formatResponseText(message.content)}
+                        
+                        {/* 替换原来的自动显示图谱代码，改为显示按钮 */}
+                        {message.role === 'assistant' && 
+                         index === conversationHistory.length - 1 && 
+                         scenarioId?.startsWith("relationship_") && !isTyping && (
+                          <div className="mt-8 w-full">
+                            {!showGraph ? (
+                              <button 
+                                onClick={() => setShowGraph(true)}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md flex items-center gap-2 shadow-md transition-colors duration-200"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                <span>显示人物关系图谱</span>
+                              </button>
+                            ) : (
+                              <>
+                                <div className="flex items-center mb-3 border-l-4 border-emerald-500 pl-3">
+                                  <h3 className="text-xl font-bold text-emerald-400">人物关系图谱分析</h3>
+                                  <div className="flex items-center ml-3 text-xs text-gray-400">
+                                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1"></span>
+                                    实时交互可视化
+                                  </div>
+                                </div>
+                                <RelationshipGraph />
+                                <button 
+                                  onClick={() => setShowGraph(false)}
+                                  className="mt-4 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-sm flex items-center gap-1 transition-colors duration-200"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                  <span>隐藏图谱</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </>
                     ) : (
                       // 用户消息仍然使用预格式化文本
                       <div className="whitespace-pre-wrap">{message.content}</div>

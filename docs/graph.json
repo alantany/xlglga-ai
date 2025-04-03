@@ -1,0 +1,32 @@
+{
+    "nodes": [
+      {"id": "张国强", "label": "M市市长", "group": "官员"},
+      {"id": "李卫国", "label": "M市副市长", "group": "官员"},
+      {"id": "王建设", "label": "住建局局长", "group": "官员"},
+      {"id": "刘土地", "label": "国土局局长", "group": "官员"},
+      {"id": "陈财政", "label": "财政局局长", "group": "官员"},
+      {"id": "赵采购", "label": "采购中心主任", "group": "官员"},
+      {"id": "周工程", "label": "工程科科长", "group": "官员"},
+      {"id": "钱规划", "label": "规划科科长", "group": "官员"},
+      {"id": "孙资金", "label": "国库科科长", "group": "官员"},
+      {"id": "吴监督", "label": "监察科科长", "group": "官员"},
+      {"id": "杨建筑", "label": "宏远建设董事长", "group": "企业"},
+      {"id": "林地产", "label": "盛世地产总裁", "group": "企业"},
+      {"id": "郑材料", "label": "鑫泰建材老板", "group": "企业"},
+      {"id": "黄科技", "label": "智信科技CEO", "group": "企业"}
+    ],
+    "links": [
+      {"source": "张国强", "target": "李卫国", "relation": "同学"},
+      {"source": "张国强", "target": "王建设", "relation": "表亲"},
+      {"source": "李卫国", "target": "刘土地", "relation": "战友"},
+      {"source": "张国强", "target": "陈财政", "relation": "老乡"},
+      {"source": "赵采购", "target": "陈财政", "relation": "上下级"},
+      {"source": "周工程", "target": "王建设", "relation": "师徒"},
+      {"source": "钱规划", "target": "刘土地", "relation": "同事"},
+      {"source": "杨建筑", "target": "张国强", "relation": "行贿50万/季度"},
+      {"source": "林地产", "target": "李卫国", "relation": "持股"},
+      {"source": "郑材料", "target": "王建设", "relation": "裙带关系"},
+      {"source": "黄科技", "target": "赵采购", "relation": "回扣"}
+    ]
+  }
+  

@@ -27,6 +27,7 @@ export default function LargeScreenDisplay() {
   const [isFileListVisible, setIsFileListVisible] = useState(false)
   const [isLoadingFile, setIsLoadingFile] = useState(false)
   const [fileContentsCache, setFileContentsCache] = useState<{[key: string]: string}>({})
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -279,61 +280,108 @@ export default function LargeScreenDisplay() {
     }
   }
 
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-950 to-blue-950 text-slate-100">
       <Header />
 
-      <main className="flex-1 p-6 overflow-hidden flex">
-        <div className="flex-1 flex gap-4 max-w-7xl mx-auto w-full relative z-10">
-          {/* 左侧场景选择区域 */}
-          <ScenarioSelector 
-            scenarios={scenarios}
-            currentScenario={currentScenario}
-            setCurrentScenario={setCurrentScenario}
-            selectedSubScenario={selectedSubScenario}
-            setSelectedSubScenario={setSelectedSubScenario}
-            setFileList={setFileList}
-            setIsFileListVisible={setIsFileListVisible}
-            handleSubScenarioClick={handleSubScenarioClick}
-            handleSubScenarioHover={handleSubScenarioHover}
-          />
+      <main className="min-h-screen flex bg-gray-950 p-2">
+        <ScenarioSelector 
+          selectedSubScenario={selectedSubScenario} 
+          setSelectedSubScenario={setSelectedSubScenario}
+          currentScenario={currentScenario}
+          setCurrentScenario={setCurrentScenario}
+          scenarios={scenarios}
+          isCollapsed={isSidebarCollapsed}
+          setFileList={setFileList}
+          setIsFileListVisible={setIsFileListVisible}
+          handleSubScenarioClick={handleSubScenarioClick}
+          handleSubScenarioHover={handleSubScenarioHover}
+        />
+        
+        {/* 折叠/展开按钮 */}
+        <button
+          onClick={toggleSidebar}
+          className={`
+            fixed left-0 top-1/2 transform -translate-y-1/2 z-10
+            px-2 py-3 bg-gray-800 hover:bg-blue-700 text-white rounded-r-md
+            transition-all duration-300 ease-in-out
+            ${isSidebarCollapsed ? 'ml-0' : 'ml-[20%]'}
+            flex flex-col items-center justify-center
+            shadow-lg hover:shadow-xl
+          `}
+          style={{
+            boxShadow: '4px 0 10px rgba(0, 0, 0, 0.2)',
+            transform: `translateY(-50%)`,
+          }}
+          title={isSidebarCollapsed ? "展开场景选择面板" : "收起场景选择面板"}
+        >
+          <span className="text-lg">{isSidebarCollapsed ? '▶' : '◀'}</span>
+          <span className="text-xs mt-1 whitespace-nowrap">
+            {isSidebarCollapsed ? '展开' : '收起'}
+          </span>
+        </button>
 
-          {/* 右侧内容区 */}
-          <div id="content-area" className="flex-1 flex flex-col gap-4">
-            {/* 响应区 */}
-            <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden flex-1 flex flex-col">
-              <div className="p-4 bg-gray-800 border-b border-gray-700">
-                <h2 className="text-xl font-semibold text-white">
-                  {currentScenario !== null 
-                    ? `${scenarios[currentScenario].title} - ${selectedSubScenario ? scenarios[currentScenario].subScenarios.find(s => s.id === selectedSubScenario)?.title : '请选择具体阶段'}` 
-                    : '选择案件类型开始分析'}
-                </h2>
-              </div>
+        {/* 内容区域 */}
+        <div 
+          className={`
+            flex-1 p-4 transition-all duration-300 ease-in-out
+            ${isSidebarCollapsed ? 'ml-4' : 'ml-0'}
+          `}
+        >
+          <div 
+            className="rounded-lg overflow-hidden h-full border border-gray-700 shadow-2xl flex flex-col"
+            style={{ 
+              background: 'linear-gradient(135deg, #1e293b, #0f172a)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 60px rgba(30, 64, 175, 0.1)'
+            }}
+          >
+            {/* 顶部标题栏 */}
+            <div className="p-4 bg-gray-800 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">
+                {currentScenario !== null 
+                  ? `${scenarios[currentScenario].title} - ${selectedSubScenario ? scenarios[currentScenario].subScenarios.find(s => s.id === selectedSubScenario)?.title : '请选择具体阶段'}` 
+                  : '选择案件类型开始分析'}
+              </h2>
+            </div>
+            
+            {/* 主内容区域，分为文件列表和AI响应 */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* 文件列表区域 */}
+              <FileList 
+                selectedSubScenario={selectedSubScenario}
+                fileList={fileList}
+                isFileListVisible={isFileListVisible}
+                selectedFile={selectedFile}
+                isLoadingFile={isLoadingFile}
+                scenarioContent={scenarioContent}
+                handleFileClick={handleFileClick}
+              />
               
-              {/* 主内容区域，分为文件列表和AI响应 */}
-              <div className="flex-1 flex overflow-hidden">
-                {/* 文件列表区域 */}
-                <FileList 
-                  selectedSubScenario={selectedSubScenario}
-                  fileList={fileList}
-                  isFileListVisible={isFileListVisible}
-                  selectedFile={selectedFile}
-                  isLoadingFile={isLoadingFile}
-                  scenarioContent={scenarioContent}
-                  handleFileClick={handleFileClick}
+              {/* AI响应区域 */}
+              <div id="ai-response-area" className={`${selectedSubScenario && fileList.length > 0 && isFileListVisible ? 'w-3/4' : 'w-full'} p-4 overflow-auto relative`}>
+                {/* 添加文件列表切换按钮 */}
+                {selectedSubScenario && fileList.length > 0 && (
+                  <button 
+                    onClick={() => setIsFileListVisible(prev => !prev)}
+                    className="absolute top-2 left-4 z-10 bg-gray-700 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded-full flex items-center shadow-md"
+                  >
+                    {isFileListVisible ? '隐藏文件列表' : '显示文件列表'} 
+                    <span className="ml-1">{isFileListVisible ? '◀' : '▶'}</span>
+                  </button>
+                )}
+                <ResponseDisplay 
+                  scenarioId={selectedSubScenario || ''}
+                  response={aiResponse} 
+                  isResponding={isResponding}
+                  conversationHistory={conversationHistory}
                 />
-                
-                {/* AI响应区域 */}
-                <div id="ai-response-area" className={`${selectedSubScenario && fileList.length > 0 && isFileListVisible ? 'w-3/4' : 'w-full'} p-4 overflow-auto`}>
-                  <ResponseDisplay 
-                    response={aiResponse} 
-                    isResponding={isResponding} 
-                    conversationHistory={conversationHistory}
-                  />
-                </div>
               </div>
             </div>
-
+            
             {/* 输入区 */}
             <InputSection
               userInput={userInput}
