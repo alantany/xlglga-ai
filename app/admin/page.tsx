@@ -22,6 +22,16 @@ interface Scenario {
   subScenarios: SubScenario[];
 }
 
+// 添加模型配置接口
+interface ModelConfig {
+  name: string;
+  type: 'ollama' | 'openrouter';
+  apiUrl: string;
+  apiKey?: string;
+  modelName: string;
+  isActive: boolean;
+}
+
 // 为避免直接修改导入的配置文件，创建副本
 let configData = JSON.parse(JSON.stringify(scenariosConfig))
 
@@ -49,6 +59,10 @@ export default function AdminPage() {
     description: '',
     directory: ''
   })
+
+  // 添加模型相关状态
+  const [models, setModels] = useState<ModelConfig[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   // 认证逻辑 - 简单实现，实际生产环境请使用更安全的方式
   const authenticate = () => {
@@ -212,6 +226,87 @@ export default function AdminPage() {
     }
   }
 
+  // 加载模型配置
+  const loadModelConfig = async () => {
+    setIsLoadingModels(true);
+    try {
+      const response = await fetch('/api/admin/models');
+      if (response.ok) {
+        const data = await response.json();
+        setModels(data);
+      } else {
+        toast.error('加载模型配置失败');
+      }
+    } catch (error) {
+      toast.error('加载模型配置出错: ' + (error as Error).message);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  // 保存模型配置
+  const saveModelConfig = async () => {
+    try {
+      const response = await fetch('/api/admin/models', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ models }),
+      });
+
+      if (response.ok) {
+        toast.success('模型配置已保存');
+      } else {
+        toast.error('保存模型配置失败');
+      }
+    } catch (error) {
+      toast.error('保存模型配置出错: ' + (error as Error).message);
+    }
+  };
+
+  // 添加新模型
+  const addModel = () => {
+    setModels([
+      ...models,
+      {
+        name: '新模型',
+        type: 'ollama',
+        apiUrl: '',
+        modelName: '',
+        isActive: false,
+      },
+    ]);
+  };
+
+  // 更新模型配置
+  const updateModel = (index: number, field: keyof ModelConfig, value: any) => {
+    const newModels = [...models];
+    newModels[index] = {
+      ...newModels[index],
+      [field]: value,
+    };
+    setModels(newModels);
+  };
+
+  // 切换活动模型
+  const toggleActiveModel = (index: number) => {
+    const newModels = models.map((model, i) => ({
+      ...model,
+      isActive: i === index,
+    }));
+    setModels(newModels);
+  };
+
+  // 删除模型
+  const deleteModel = (index: number) => {
+    if (confirm('确定要删除这个模型配置吗？')) {
+      const newModels = [...models];
+      newModels.splice(index, 1);
+      setModels(newModels);
+    }
+  };
+
   // 登录表单
   if (!isAuthenticated) {
     return (
@@ -261,6 +356,9 @@ export default function AdminPage() {
       <div className="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center">
         <h1 className="text-xl font-bold">系统管理面板</h1>
         <div className="flex items-center space-x-4">
+          <Link href="/admin/models" className="text-blue-400 hover:text-blue-300">
+            模型管理
+          </Link>
           <Link href="/" className="text-blue-400 hover:text-blue-300">
             返回首页
           </Link>
@@ -284,6 +382,12 @@ export default function AdminPage() {
             onClick={() => setActiveTab('scenarios')}
           >
             场景管理
+          </button>
+          <button
+            className={`py-3 px-4 ${activeTab === 'models' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+            onClick={() => setActiveTab('models')}
+          >
+            模型管理
           </button>
           <button
             className={`py-3 px-4 ${activeTab === 'help' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
@@ -477,6 +581,121 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+        
+        {activeTab === 'models' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">模型管理</h2>
+              <div className="space-x-4">
+                <button
+                  onClick={addModel}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
+                >
+                  添加模型
+                </button>
+                <button
+                  onClick={saveModelConfig}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+                >
+                  保存配置
+                </button>
+              </div>
+            </div>
+
+            {isLoadingModels ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-4 text-gray-400">加载中...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {models.map((model, index) => (
+                  <div key={index} className="bg-gray-800 p-6 rounded-lg">
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-xl font-bold">模型配置 #{index + 1}</h3>
+                      <div className="space-x-2">
+                        <button
+                          onClick={() => toggleActiveModel(index)}
+                          className={`px-3 py-1 rounded ${
+                            model.isActive
+                              ? 'bg-green-600 hover:bg-green-700'
+                              : 'bg-gray-600 hover:bg-gray-700'
+                          }`}
+                        >
+                          {model.isActive ? '当前使用' : '设为当前'}
+                        </button>
+                        <button
+                          onClick={() => deleteModel(index)}
+                          className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded"
+                        >
+                          删除
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-gray-400 mb-2">模型名称</label>
+                        <input
+                          type="text"
+                          value={model.name}
+                          onChange={(e) => updateModel(index, 'name', e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-400 mb-2">模型类型</label>
+                        <select
+                          value={model.type}
+                          onChange={(e) => updateModel(index, 'type', e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                        >
+                          <option value="ollama">Ollama</option>
+                          <option value="openrouter">OpenRouter</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-400 mb-2">API地址</label>
+                        <input
+                          type="text"
+                          value={model.apiUrl}
+                          onChange={(e) => updateModel(index, 'apiUrl', e.target.value)}
+                          placeholder={model.type === 'ollama' ? 'http://127.0.0.1:11434' : 'https://openrouter.ai/api/v1'}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                        />
+                      </div>
+
+                      {model.type === 'openrouter' && (
+                        <div>
+                          <label className="block text-gray-400 mb-2">API密钥</label>
+                          <input
+                            type="password"
+                            value={model.apiKey || ''}
+                            onChange={(e) => updateModel(index, 'apiKey', e.target.value)}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-gray-400 mb-2">模型名称</label>
+                        <input
+                          type="text"
+                          value={model.modelName}
+                          onChange={(e) => updateModel(index, 'modelName', e.target.value)}
+                          placeholder={model.type === 'ollama' ? 'deepseek' : 'deepseek/deepseek-r1:free'}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         

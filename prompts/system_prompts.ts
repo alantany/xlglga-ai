@@ -62,7 +62,7 @@ export async function getRelationshipPrompt(fileContents: FileContent[]): Promis
 export async function getPromptByScenarioId(scenarioId: string, fileContents: FileContent[]): Promise<string> {
   try {
     // 调用API获取提示词
-    const response = await fetch('/api/prompts', {
+    const response = await fetch('http://localhost:3000/api/prompts', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

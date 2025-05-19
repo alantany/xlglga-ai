@@ -1,0 +1,28 @@
+{
+  "models": [
+    {
+      "id": "ollama",
+      "name": "本地Ollama",
+      "type": "ollama",
+      "apiUrl": "http://127.0.0.1:11434",
+      "modelName": "deepseek-r1:14b",
+      "isActive": false
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "type": "openrouter",
+      "apiUrl": "https://openrouter.ai/api/v1",
+      "modelName": "deepseek/deepseek-r1:free",
+      "isActive": false
+    },
+    {
+      "id": "telcom",
+      "name": "Telcom DeepSeek",
+      "type": "telcom",
+      "apiUrl": "http://61.49.87.61:8081/v1/chat/completions",
+      "modelName": "deepseekr1",
+      "isActive": true
+    }
+  ]
+}
