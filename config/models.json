@@ -6,7 +6,7 @@
       "type": "ollama",
       "apiUrl": "http://127.0.0.1:11434",
       "modelName": "deepseek-r1:14b",
-      "isActive": false
+      "isActive": true
     },
     {
       "id": "openrouter",
@@ -22,7 +22,7 @@
       "type": "telcom",
       "apiUrl": "http://61.49.87.61:8081/v1/chat/completions",
       "modelName": "deepseekr1",
-      "isActive": true
+      "isActive": false
     }
   ]
 }
